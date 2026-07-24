@@ -1,0 +1,50 @@
+# Environment & Secrets
+.env
+.env*.local
+
+# Dependencies & Package Managers
+node_modules/
+.pnpm-store/
+.npm
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Build outputs & caches
+dist/
+dist-ssr/
+.vite/
+*.tsbuildinfo
+coverage/
+.cache/
+
+# Worktrees & Tooling Artifacts
+.worktree/
+.worktrees/
+.artifacts/
+.hallmark/
+
+# Logs & Temp files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -1,0 +1,36 @@
+services:
+  nook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    env_file:
+      - .env
+    environment:
+      HMR_CLIENT_PORT: ${PORT:-18787}
+      TZ: Asia/Taipei
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--spider",
+          "http://127.0.0.1:8080/nook-health"
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    init: true
+    ports:
+      - "${PORT:-18787}:8080"
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - nook_node_modules:/app/node_modules
+
+volumes:
+  nook_node_modules:
