@@ -787,13 +787,23 @@ textarea:disabled {
   width: fit-content;
 }
 
-#stage.working .stage__frame {
-  animation: bob 1.4s var(--ease-in-out) infinite;
+#stage.stage--thinking .stage__frame {
+  animation: think-sway 1.8s var(--ease-in-out) infinite;
 }
 
-@keyframes bob {
+#stage.stage--talking .stage__frame {
+  animation: talk-bob 460ms var(--ease-in-out) infinite;
+}
+
+@keyframes think-sway {
   50% {
-    transform: translateY(var(--space-negative-2xs));
+    transform: rotate(-1.5deg) translateY(var(--space-negative-2xs));
+  }
+}
+
+@keyframes talk-bob {
+  50% {
+    transform: rotate(1deg) translateY(var(--space-negative-xs));
   }
 }
 
@@ -915,7 +925,8 @@ textarea:disabled {
     transition-duration: 150ms !important;
   }
 
-  #stage.working .stage__frame {
+  #stage.stage--thinking .stage__frame,
+  #stage.stage--talking .stage__frame {
     animation: none;
   }
 }

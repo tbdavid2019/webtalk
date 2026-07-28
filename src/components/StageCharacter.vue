@@ -24,9 +24,15 @@ const characterImages: Record<CharacterId, Record<StageState, string[]>> = {
     ],
   },
   norman: {
-    idle: ["/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=2"],
-    talking: ["/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=2"],
-    thinking: ["/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=2"],
+    idle: ["/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=3"],
+    talking: [
+      "/nook-guide/avatars/norman/norman-talking.png?v=1",
+      "/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=3",
+    ],
+    thinking: [
+      "/nook-guide/avatars/norman/norman-thinking.png?v=1",
+      "/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=3",
+    ],
   },
 };
 const ALT_TEXT: Record<CharacterId, Record<Language, string>> = {
@@ -119,7 +125,7 @@ onBeforeUnmount(clearActionTimer);
 <template>
   <aside
     id="stage"
-    :class="{ working: state !== 'idle' }"
+    :class="[`stage--${state}`, { working: state !== 'idle' }]"
     aria-live="polite"
   >
     <div class="stage__frame">

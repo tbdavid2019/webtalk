@@ -126,6 +126,9 @@ const typingLabel = computed(() => {
     : `${activeCharacter.value.name} is searching for information`;
 });
 const greeting = computed(() => copy.value.greeting.replace("Mia", activeCharacter.value.name));
+const composerPlaceholder = computed(
+  () => copy.value.placeholder.replace("Mia", activeCharacter.value.name),
+);
 
 function delay(duration: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, duration));
@@ -479,7 +482,7 @@ async function changeProvider(): Promise<void> {
               aria-describedby="composer-help"
               :aria-invalid="Boolean(error)"
               :disabled="isWorking"
-              :placeholder="copy.placeholder"
+          :placeholder="composerPlaceholder"
               rows="2"
               @keydown="handleComposerKeydown"
             ></textarea>

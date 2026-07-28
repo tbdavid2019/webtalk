@@ -20,6 +20,7 @@
 
 ### Added
 
+- 新增 Norman 的托腮思考與舉指說明動作影格，並依聊天狀態播放不同節奏的動畫。
 - 新增 Q 版 8-bit 電玩風格男角「Norman 叢林解說人」。
 - 新增 Mia 與 Norman 的前台人偶切換功能。
 - 新增前台 LLM Provider 切換功能。
@@ -35,6 +36,7 @@
 - 將角色名稱從 AIKKA 全面改為 Mia。
 - 將原本的 8-bit 男角重新命名為「Norman 叢林解說人」。
 - 助理訊息下方的說話者名稱會跟著目前選擇的人偶切換，不再固定顯示 Mia。
+- 對話輸入框提示文字會跟著目前選擇的人偶切換。
 - 整理人偶資源目錄：
   - Mia：`public/nook-guide/avatars/mia/`
   - Norman：`public/nook-guide/avatars/norman/`
