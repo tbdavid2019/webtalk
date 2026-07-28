@@ -151,4 +151,4 @@ docker compose up -d
 
 ## 📄 授權條款 (License)
 
-Private Repository / Private License.
+本專案採用 [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) 開源授權條款。
