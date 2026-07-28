@@ -11,6 +11,22 @@ const sessionLifetimeMs = 1000 * 60 * 60 * 8;
 const chatSessions = new Map();
 const OPENAI_PROVIDERS = new Set(["custom", "gemini", "groq", "openai"]);
 const CHARACTER_IDS = new Set(["mia", "norman"]);
+const CHARACTER_PROMPTS = {
+  mia: "You are Mia, a helpful, concise assistant.",
+  norman: "You are Norman, a knowledgeable, friendly jungle guide and assistant.",
+};
+
+function getSystemPrompt(provider, character) {
+  const envPrompt = environmentValue("NOOK_SYSTEM_PROMPT");
+  if (envPrompt) return envPrompt;
+  const activeChar = CHARACTER_IDS.has(character) ? character : (config?.ui?.character ?? "mia");
+  const configuredPrompt = config?.openai?.systemPrompt;
+  if (!configuredPrompt || configuredPrompt === "You are Mia, a helpful, concise assistant.") {
+    return CHARACTER_PROMPTS[activeChar] ?? CHARACTER_PROMPTS.mia;
+  }
+  return configuredPrompt;
+}
+
 const PROVIDER_PRESETS = {
   gemini: {
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
@@ -89,12 +105,12 @@ function isHttpUrl(value) {
 
 function normaliseConfig(value) {
   const defaults = defaultConfig();
-  const provider = OPENAI_PROVIDERS.has(value?.openai?.provider)
-    ? value.openai.provider
-    : defaults.openai.provider;
   const character = CHARACTER_IDS.has(value?.ui?.character)
     ? value.ui.character
     : defaults.ui.character;
+  const provider = OPENAI_PROVIDERS.has(value?.openai?.provider)
+    ? value.openai.provider
+    : defaults.openai.provider;
   return {
     openai: {
       apiKey: text(value?.openai?.apiKey),
@@ -136,14 +152,14 @@ async function saveConfig(nextConfig) {
 }
 
 function publicConfig() {
-  const activeProfile = providerConfig(config.openai.provider);
+  const activeProfile = providerConfig(config.openai.provider, config.ui.character);
   return {
     openai: {
       baseUrl: activeProfile.baseUrl,
       hasApiKey: Boolean(activeProfile.apiKey),
       model: activeProfile.model,
       provider: config.openai.provider,
-      systemPrompt: config.openai.systemPrompt,
+      systemPrompt: activeProfile.systemPrompt,
     },
     ui: {
       character: config.ui.character,
@@ -155,7 +171,7 @@ function environmentValue(name) {
   return text(process.env[name]);
 }
 
-function providerConfig(provider) {
+function providerConfig(provider, character) {
   if (provider === "custom") {
     const useSavedProfile = config.openai.provider === "custom";
     return {
@@ -167,7 +183,7 @@ function providerConfig(provider) {
       model: environmentValue("CUSTOM_OPENAI_MODEL")
         || (useSavedProfile ? config.openai.model : "custom-model"),
       provider,
-      systemPrompt: environmentValue("NOOK_SYSTEM_PROMPT") || config.openai.systemPrompt,
+      systemPrompt: getSystemPrompt(provider, character),
     };
   }
   const preset = PROVIDER_PRESETS[provider] ?? PROVIDER_PRESETS.openai;
@@ -182,7 +198,7 @@ function providerConfig(provider) {
       || (useSavedProfile ? config.openai.model : "")
       || preset.model,
     provider,
-    systemPrompt: environmentValue("NOOK_SYSTEM_PROMPT") || config.openai.systemPrompt,
+    systemPrompt: getSystemPrompt(provider, character),
   };
 }
 
@@ -326,10 +342,13 @@ async function handleOpenAiChat(request, response, pathname, provider) {
   if (request.method === "POST" && pathname === "/api/chat-start") {
     const body = await readJson(request);
     const sessionId = randomUUID();
+    const character = CHARACTER_IDS.has(body?.character) ? body.character : config.ui.character;
+    const profile = providerConfig(provider, character);
     chatSessions.set(sessionId, {
+      character,
       language: body.language === "en" ? "en" : "zh",
-      messages: providerConfig(provider).systemPrompt
-        ? [{ content: providerConfig(provider).systemPrompt, role: "system" }]
+      messages: profile.systemPrompt
+        ? [{ content: profile.systemPrompt, role: "system" }]
         : [],
       provider,
     });
@@ -345,6 +364,9 @@ async function handleOpenAiChat(request, response, pathname, provider) {
       sendJson(response, 400, { detail: "A message is required." });
       return true;
     }
+    const character = CHARACTER_IDS.has(body?.character)
+      ? body.character
+      : session?.character ?? config.ui.character;
     const history = Array.isArray(body.history)
       ? body.history
         .slice(-40)
@@ -354,7 +376,7 @@ async function handleOpenAiChat(request, response, pathname, provider) {
         }))
         .filter((item) => item.content)
       : session?.messages?.filter((item) => item.role !== "system") ?? [];
-    const profile = providerConfig(provider);
+    const profile = providerConfig(provider, character);
     const messages = profile.systemPrompt
       ? [{ content: profile.systemPrompt, role: "system" }, ...history]
       : history;

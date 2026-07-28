@@ -1,4 +1,5 @@
 import type {
+  CharacterId,
   ChatResponse,
   CreateSessionResponse,
   Language,
@@ -51,9 +52,10 @@ export function fetchTopics(language: Language, provider: ProviderId): Promise<T
 export function createSession(
   language: Language,
   provider: ProviderId,
+  character?: CharacterId,
 ): Promise<CreateSessionResponse> {
   return requestJson<CreateSessionResponse>("/api/chat-start", {
-    body: JSON.stringify({ language }),
+    body: JSON.stringify({ character, language }),
     headers: { ...JSON_HEADERS, ...providerHeaders(provider) },
     method: "POST",
   });
@@ -64,9 +66,11 @@ export function sendMessage(
   message: string,
   provider: ProviderId,
   history: Array<{ content: string; role: "assistant" | "user" }>,
+  character?: CharacterId,
 ): Promise<ChatResponse> {
   return requestJson<ChatResponse>("/api/chat-message", {
     body: JSON.stringify({
+      character,
       history,
       message,
       session_id: sessionId,

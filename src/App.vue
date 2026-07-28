@@ -150,7 +150,7 @@ async function ensureSession(): Promise<string> {
   if (sessionId.value) {
     return sessionId.value;
   }
-  const session = await createSession(language.value, providerId.value);
+  const session = await createSession(language.value, providerId.value, characterId.value);
   sessionId.value = session.session_id;
   return session.session_id;
 }
@@ -204,6 +204,7 @@ async function ask(rawQuestion?: string): Promise<void> {
       question,
       providerId.value,
       history,
+      characterId.value,
     );
     if (response.error) {
       throw new Error(response.error);
