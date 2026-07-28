@@ -113,16 +113,34 @@ docker compose up -d
    - 點擊 **Add New...** -> **Project**。
    - 選擇並匯入（Import）你的 Nook / WebTalk 儲存庫。
 
-3. **設定環境變數 (Environment Variables)**：
-   - 在 Vercel 的專案設定頁面中，進入 **Environment Variables**。
-   - 依照 `.env.example` 填入必要的金鑰（例如 `NOOK_ADMIN_PASSWORD`, `OPENAI_API_KEY`, `GEMINI_API_KEY` 等）。
-
-4. **自動辨識設定 (`vercel.json`)**：
-   Vercel 會自動讀取專案根目錄下的 `vercel.json`：
-   - **Framework Preset**: Vite
+3. **設定專案參數 (Build & Development Settings)**：
+   在 **Project Settings** -> **General** 中確認以下參數：
+   - **Framework Preset**: `Vite`
    - **Build Command**: `pnpm build`
    - **Output Directory**: `dist`
-   - **Node.js Version**: 選擇 `22.x`
+   - **Node.js Version**: `22.x` (請務必選取 22.x)
+
+4. **設定環境變數 (Environment Variables)**：
+   在 **Project Settings** -> **Environment Variables** 填入所需的變數：
+
+   | 變數名稱 (Key) | 是否必填 | 說明 / 預設值 | 範例 / 建議設定 |
+   | --- | --- | --- | --- |
+   | `NOOK_ADMIN_PASSWORD` | **必填** | 登入前端 Admin 面板所需的管理密碼 | `your-secure-admin-password` |
+   | `OPENAI_API_KEY` | 選填 | OpenAI API 金鑰 | `sk-proj-...` |
+   | `OPENAI_MODEL` | 選填 | OpenAI 預設模型 (預設 `gpt-4.1-mini`) | `gpt-4.1-mini` 或 `gpt-4o` |
+   | `OPENAI_BASE_URL` | 選填 | OpenAI API Base URL | `https://api.openai.com/v1` |
+   | `GEMINI_API_KEY` | 選填 | Google Gemini API 金鑰 | `AIzaSy...` |
+   | `GEMINI_MODEL` | 選填 | Gemini 預設模型 (預設 `gemini-3.6-flash`) | `gemini-3.6-flash` |
+   | `GEMINI_BASE_URL` | 選填 | Gemini Base URL | `https://generativelanguage.googleapis.com/v1beta/openai` |
+   | `GROQ_API_KEY` | 選填 | Groq API 金鑰 | `gsk_...` |
+   | `GROQ_MODEL` | 選填 | Groq 預設模型 (預設 `openai/gpt-oss-120b`) | `openai/gpt-oss-120b` |
+   | `GROQ_BASE_URL` | 選填 | Groq Base URL | `https://api.groq.com/openai/v1` |
+   | `CUSTOM_OPENAI_API_KEY` | 選填 | 自訂 OpenAI 相容服務 API Key | `your-custom-key` |
+   | `CUSTOM_OPENAI_BASE_URL` | 選填 | 自訂 OpenAI 相容服務 Base URL | `https://your-custom-llm.com/v1` |
+   | `CUSTOM_OPENAI_MODEL` | 選填 | 自訂 OpenAI 相容服務模型名稱 | `custom-model-name` |
+   | `NOOK_SYSTEM_PROMPT` | 選填 | 預設 AI 助手 Prompt / 角色設定 | `You are Mia, a helpful, concise assistant.` |
+
+   > 💡 **提示**：`OPENAI_API_KEY`、`GEMINI_API_KEY`、`GROQ_API_KEY` 及 `CUSTOM_*` 建議至少設定一種 AI 供應商的金鑰，部署後才能正常呼叫模型對話。
 
 5. **自動觸發部署機制**：
    - 只要設定好 GitHub / Git Remote 連接後：
