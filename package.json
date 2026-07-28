@@ -3,9 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "build": "vue-tsc -b && vite build",
-    "dev": "vite",
+    "dev": "node server/index.mjs & nook_server_pid=$!; trap 'kill $nook_server_pid' EXIT; vite",
     "preview": "vite preview",
     "typecheck": "vue-tsc -b"
   },

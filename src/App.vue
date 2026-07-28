@@ -2,12 +2,15 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 
 import ChatMessage from "./components/ChatMessage.vue";
+import AdminPanel from "./components/AdminPanel.vue";
 import StageCharacter from "./components/StageCharacter.vue";
 import TopicRail from "./components/TopicRail.vue";
 import { createSession, fetchTopics, sendMessage } from "./services/esgApi";
 import type {
   ChatMessage as ChatMessageType,
+  CharacterId,
   Language,
+  ProviderId,
   StageState,
   TopicCategory,
 } from "./types";
@@ -46,7 +49,7 @@ const COPY_BY_LANGUAGE: Record<Language, InterfaceCopy> = {
     chatLabel: "ESG 對話",
     composerHelp: "Enter 送出 · Shift + Enter 換行",
     composerLabel: "你的問題",
-    greeting: "嗨，我是 AIKKA。想了解什麼與三立ESG的資訊嗎？跟我說，我幫你找。",
+    greeting: "嗨，我是 AIKKA。想了解什麼 ESG 資訊嗎？跟我說，我幫你找。",
     placeholder: "想知道甚麼？跟AIKKA說",
     reset: "重設",
     searchError: "聊天 API 無法完成請求",
@@ -61,12 +64,22 @@ const MINIMUM_THINKING_TIME_MS = 2500;
 const SUCCESS_STATE_DURATION_MS = 900;
 
 const categories = ref<TopicCategory[]>([]);
+const backgroundCredit = ref("");
+const characterId = ref<CharacterId>("aikka");
 const composer = ref("");
 const error = ref("");
+const isAdminOpen = ref(false);
 const isLoadingTopics = ref(true);
 const language = ref<Language>("zh");
 const messages = ref<ChatMessageType[]>([]);
 const messageList = ref<HTMLElement>();
+const providerId = ref<ProviderId>("esg-proxy");
+const providerOptions = ref<Array<{
+  configured: boolean;
+  id: ProviderId;
+  label: string;
+  model: string;
+}>>([]);
 const githubUrl = import.meta.env.VITE_GITHUB_URL?.trim() ?? "";
 const sendState = ref<SendState>("default");
 const sessionId = ref("");
@@ -75,6 +88,19 @@ const topicError = ref("");
 
 const isWorking = computed(() => stageState.value !== "idle");
 const copy = computed(() => COPY_BY_LANGUAGE[language.value]);
+const characters: Record<CharacterId, { label: string; name: string; avatar: string }> = {
+  aikka: {
+    avatar: "/nook-guide/avatars/aikka/aikka-avatar.png?v=3",
+    label: "AIKKA",
+    name: "AIKKA",
+  },
+  "field-guide": {
+    avatar: "/nook-guide/avatars/field-guide/vietnam-field-guide-8bit-idle.png?v=1",
+    label: "8-bit 導覽員",
+    name: "8-bit 導覽員",
+  },
+};
+const activeCharacter = computed(() => characters[characterId.value]);
 const languageSwitchLabel = computed(() => {
   return language.value === "zh" ? "EN" : "中文";
 });
@@ -97,9 +123,10 @@ const sendButtonIcon = computed(() => {
 });
 const typingLabel = computed(() => {
   return language.value === "zh"
-    ? "AIKKA 正在查找資料"
-    : "AIKKA is searching for information";
+    ? `${activeCharacter.value.name} 正在查找資料`
+    : `${activeCharacter.value.name} is searching for information`;
 });
+const greeting = computed(() => copy.value.greeting.replace("AIKKA", activeCharacter.value.name));
 
 function delay(duration: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, duration));
@@ -121,7 +148,7 @@ async function ensureSession(): Promise<string> {
   if (sessionId.value) {
     return sessionId.value;
   }
-  const session = await createSession(language.value);
+  const session = await createSession(language.value, providerId.value);
   sessionId.value = session.session_id;
   return session.session_id;
 }
@@ -167,7 +194,15 @@ async function ask(rawQuestion?: string): Promise<void> {
   const thinkingStartedAt = performance.now();
   try {
     const activeSessionId = await ensureSession();
-    const response = await sendMessage(activeSessionId, question);
+    const history = messages.value
+      .slice(0, -1)
+      .map((item) => ({ content: item.text, role: item.role }));
+    const response = await sendMessage(
+      activeSessionId,
+      question,
+      providerId.value,
+      history,
+    );
     if (response.error) {
       throw new Error(response.error);
     }
@@ -222,7 +257,7 @@ async function loadTopics(): Promise<void> {
   isLoadingTopics.value = true;
   topicError.value = "";
   try {
-    const response = await fetchTopics(language.value);
+    const response = await fetchTopics(language.value, providerId.value);
     categories.value = response.categories;
   } catch (caughtError) {
     const detail = errorDetail(caughtError, copy.value.topicError);
@@ -241,7 +276,60 @@ async function changeLanguage(nextLanguage: Language): Promise<void> {
   await loadTopics();
 }
 
-onMounted(loadTopics);
+async function loadRuntimeConfig(): Promise<void> {
+  try {
+    const response = await fetch("/api/runtime-config");
+    if (!response.ok) return;
+    const runtime = await response.json() as {
+      llm?: {
+        defaultProvider?: ProviderId;
+        providers?: Array<{
+          configured: boolean;
+          id: ProviderId;
+          label: string;
+          model: string;
+        }>;
+      };
+      ui?: { character?: string };
+    };
+    providerOptions.value = runtime.llm?.providers ?? [];
+    const savedProvider = window.localStorage.getItem("nook-provider") as ProviderId | null;
+    const selectedProvider = providerOptions.value.find(
+      (provider) => provider.id === savedProvider && provider.configured,
+    )?.id ?? runtime.llm?.defaultProvider;
+    if (selectedProvider) providerId.value = selectedProvider;
+    const savedCharacter = window.localStorage.getItem("nook-character");
+    if (savedCharacter === "aikka" || savedCharacter === "field-guide") {
+      characterId.value = savedCharacter;
+      return;
+    }
+    if (runtime.ui?.character === "aikka" || runtime.ui?.character === "field-guide") {
+      characterId.value = runtime.ui.character;
+    }
+  } catch {
+    // The UI remains usable with its built-in default when the API is unavailable.
+  }
+}
+
+async function loadBingBackground(): Promise<void> {
+  try {
+    const response = await fetch("/api/background/bing");
+    if (!response.ok) return;
+    const background = await response.json() as { copyright?: string; url?: string };
+    if (!background.url) return;
+    const imageUrl = new URL(background.url);
+    if (imageUrl.protocol !== "https:" || imageUrl.hostname !== "www.bing.com") return;
+    document.body.style.setProperty("--nook-background-image", `url("${imageUrl.href}")`);
+    backgroundCredit.value = background.copyright ?? "";
+  } catch {
+    // Keep the built-in gradient fallback if Bing is temporarily unavailable.
+  }
+}
+
+onMounted(() => {
+  void loadBingBackground();
+  void loadRuntimeConfig().then(loadTopics);
+});
 
 watch(composer, () => {
   if (sendState.value === "error") {
@@ -249,6 +337,33 @@ watch(composer, () => {
     sendState.value = "default";
   }
 });
+
+async function applyAdminSettings(settings: {
+  character: CharacterId;
+  mode: "esg-proxy" | "openai-compatible";
+  provider: Exclude<ProviderId, "esg-proxy">;
+}): Promise<void> {
+  characterId.value = settings.character;
+  providerId.value = settings.mode === "esg-proxy"
+    ? "esg-proxy"
+    : settings.provider;
+  window.localStorage.setItem("nook-character", settings.character);
+  window.localStorage.setItem("nook-provider", providerId.value);
+  resetConversation();
+  await loadRuntimeConfig();
+  await loadTopics();
+}
+
+function changeCharacter(): void {
+  window.localStorage.setItem("nook-character", characterId.value);
+  resetConversation();
+}
+
+async function changeProvider(): Promise<void> {
+  window.localStorage.setItem("nook-provider", providerId.value);
+  resetConversation();
+  await loadTopics();
+}
 </script>
 
 <template>
@@ -257,17 +372,46 @@ watch(composer, () => {
       <div class="brand">
         <img
           class="brand__avatar"
-          src="/nook-guide/aikka-avatar.png?v=3"
+          :src="activeCharacter.avatar"
           alt=""
           height="256"
           width="256"
         >
         <span>
-          <strong>AIKKA</strong>
+          <strong>{{ activeCharacter.label }}</strong>
         </span>
       </div>
 
       <div class="topbar__actions">
+        <label class="quick-switch">
+          <span class="visually-hidden">切換人偶</span>
+          <select v-model="characterId" :disabled="isWorking" @change="changeCharacter">
+            <option value="aikka">AIKKA 女角</option>
+            <option value="field-guide">8-bit 男角</option>
+          </select>
+        </label>
+        <label class="quick-switch">
+          <span class="visually-hidden">切換 LLM</span>
+          <select v-model="providerId" :disabled="isWorking" @change="changeProvider">
+            <option
+              v-for="provider in providerOptions"
+              :key="provider.id"
+              :disabled="!provider.configured"
+              :value="provider.id"
+            >
+              {{ provider.label }}{{ provider.configured ? "" : "（未設定）" }}
+            </option>
+          </select>
+        </label>
+        <button
+          class="admin-button"
+          aria-label="開啟 Nook 設定後台"
+          title="設定後台"
+          type="button"
+          @click="isAdminOpen = true"
+        >
+          <span aria-hidden="true">⚙</span>
+        </button>
         <button
           class="reset-button"
           :aria-label="copy.reset"
@@ -307,7 +451,7 @@ watch(composer, () => {
           </span>
           <img
             class="build-credit__avatar"
-            src="/nook-guide/csl-avatar.png?v=1"
+            src="/nook-guide/avatars/csl/csl-avatar.png?v=1"
             alt=""
             height="256"
             width="256"
@@ -320,9 +464,9 @@ watch(composer, () => {
       <section class="chat-panel" :aria-label="copy.chatLabel">
         <div ref="messageList" class="message-list">
           <section class="welcome-card">
-            <p class="message__speaker">AIKKA</p>
+            <p class="message__speaker">{{ activeCharacter.name }}</p>
             <p class="welcome-card__copy">
-              {{ copy.greeting }}
+              {{ greeting }}
             </p>
             <TopicRail
               :categories="categories"
@@ -386,6 +530,20 @@ watch(composer, () => {
       </section>
     </main>
 
-    <StageCharacter :language="language" :state="stageState" />
+    <StageCharacter :character="characterId" :language="language" :state="stageState" />
+    <a
+      v-if="backgroundCredit"
+      class="background-credit"
+      href="https://www.bing.com"
+      rel="noreferrer"
+      target="_blank"
+    >
+      Bing · {{ backgroundCredit }}
+    </a>
+    <AdminPanel
+      v-if="isAdminOpen"
+      @close="isAdminOpen = false"
+      @saved="applyAdminSettings"
+    />
   </div>
 </template>

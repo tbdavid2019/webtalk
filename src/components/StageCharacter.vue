@@ -1,29 +1,43 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 
-import type { Language, StageState } from "../types";
+import type { CharacterId, Language, StageState } from "../types";
 
 const props = defineProps<{
+  character: CharacterId;
   language: Language;
   state: StageState;
 }>();
 
-const idleImage = "/nook-guide/aikka-idle.png?v=3";
-const actionImages: Record<Exclude<StageState, "idle">, string[]> = {
-  talking: [
-    "/nook-guide/aikka-talking-1.png?v=3",
-    "/nook-guide/aikka-talking-2.png?v=3",
-    "/nook-guide/aikka-idle.png?v=3",
-  ],
-  thinking: [
-    "/nook-guide/aikka-thinking-1.png?v=3",
-    "/nook-guide/aikka-thinking-2.png?v=3",
-    "/nook-guide/aikka-thinking-3.png?v=3",
-  ],
+const characterImages: Record<CharacterId, Record<StageState, string[]>> = {
+  aikka: {
+    idle: ["/nook-guide/avatars/aikka/aikka-idle.png?v=3"],
+    talking: [
+      "/nook-guide/avatars/aikka/aikka-talking-1.png?v=3",
+      "/nook-guide/avatars/aikka/aikka-talking-2.png?v=3",
+      "/nook-guide/avatars/aikka/aikka-idle.png?v=3",
+    ],
+    thinking: [
+      "/nook-guide/avatars/aikka/aikka-thinking-1.png?v=3",
+      "/nook-guide/avatars/aikka/aikka-thinking-2.png?v=3",
+      "/nook-guide/avatars/aikka/aikka-thinking-3.png?v=3",
+    ],
+  },
+  "field-guide": {
+    idle: ["/nook-guide/avatars/field-guide/vietnam-field-guide-8bit-idle.png?v=1"],
+    talking: ["/nook-guide/avatars/field-guide/vietnam-field-guide-8bit-idle.png?v=1"],
+    thinking: ["/nook-guide/avatars/field-guide/vietnam-field-guide-8bit-idle.png?v=1"],
+  },
 };
-const ALT_TEXT: Record<Language, string> = {
-  en: "AIKKA virtual guide is helping with the answer",
-  zh: "AIKKA 虛擬顧問正在協助回答",
+const ALT_TEXT: Record<CharacterId, Record<Language, string>> = {
+  aikka: {
+    en: "AIKKA virtual guide is helping with the answer",
+    zh: "AIKKA 虛擬顧問正在協助回答",
+  },
+  "field-guide": {
+    en: "The 8-bit field guide is helping with the answer",
+    zh: "8-bit 野戰導覽員正在協助回答",
+  },
 };
 const STATUS_TEXT: Record<Language, Record<StageState, string>> = {
   en: {
@@ -38,11 +52,7 @@ const STATUS_TEXT: Record<Language, Record<StageState, string>> = {
   },
 };
 
-const preloadImages = [
-  idleImage,
-  ...actionImages.talking,
-  ...actionImages.thinking,
-];
+const preloadImages = Object.values(characterImages).flatMap((states) => Object.values(states).flat());
 
 function preloadImage(source: string): void {
   const image = new Image();
@@ -51,10 +61,10 @@ function preloadImage(source: string): void {
 
 preloadImages.forEach(preloadImage);
 
-const currentSource = ref(idleImage);
+const currentSource = ref(characterImages.aikka.idle[0]);
 let actionTimer: ReturnType<typeof setTimeout> | undefined;
 
-const altText = computed(() => ALT_TEXT[props.language]);
+const altText = computed(() => ALT_TEXT[props.character][props.language]);
 const statusText = computed(
   () => STATUS_TEXT[props.language][props.state],
 );
@@ -73,12 +83,17 @@ function actionInterval(state: Exclude<StageState, "idle">): number {
   return 220 + Math.random() * 200;
 }
 
+function idleImage(): string {
+  return characterImages[props.character].idle[0];
+}
+
 function playRandomAction(state: Exclude<StageState, "idle">): void {
-  const candidates = actionImages[state].filter(
+  const actionImages = characterImages[props.character][state];
+  const candidates = actionImages.filter(
     (source) => source !== currentSource.value,
   );
   const nextIndex = Math.floor(Math.random() * candidates.length);
-  currentSource.value = candidates[nextIndex] ?? actionImages[state][0];
+  currentSource.value = candidates[nextIndex] ?? actionImages[0];
   actionTimer = window.setTimeout(
     () => playRandomAction(state),
     actionInterval(state),
@@ -86,11 +101,11 @@ function playRandomAction(state: Exclude<StageState, "idle">): void {
 }
 
 watch(
-  () => props.state,
-  (state) => {
+  [() => props.state, () => props.character],
+  ([state]) => {
     clearActionTimer();
     if (state === "idle") {
-      currentSource.value = idleImage;
+      currentSource.value = idleImage();
       return;
     }
     playRandomAction(state);

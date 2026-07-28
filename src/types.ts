@@ -1,5 +1,9 @@
 export type Language = "en" | "zh";
 
+export type CharacterId = "aikka" | "field-guide";
+
+export type ProviderId = "esg-proxy" | "openai" | "groq" | "gemini" | "custom";
+
 export type StageState = "idle" | "thinking" | "talking";
 
 export interface Topic {

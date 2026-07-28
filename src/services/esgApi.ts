@@ -2,6 +2,7 @@ import type {
   ChatResponse,
   CreateSessionResponse,
   Language,
+  ProviderId,
   TopicsResponse,
 } from "../types";
 
@@ -37,20 +38,40 @@ function postJson<T>(input: RequestInfo, body: unknown): Promise<T> {
   });
 }
 
-export function fetchTopics(language: Language): Promise<TopicsResponse> {
-  return requestJson<TopicsResponse>(`/api/esg/topics/${language}`);
+function providerHeaders(provider: ProviderId): Record<string, string> {
+  return { "X-Nook-Provider": provider };
 }
 
-export function createSession(language: Language): Promise<CreateSessionResponse> {
-  return postJson<CreateSessionResponse>("/api/esg/chat/start", { language });
+export function fetchTopics(language: Language, provider: ProviderId): Promise<TopicsResponse> {
+  return requestJson<TopicsResponse>(`/api/esg/topics/${language}`, {
+    headers: providerHeaders(provider),
+  });
+}
+
+export function createSession(
+  language: Language,
+  provider: ProviderId,
+): Promise<CreateSessionResponse> {
+  return requestJson<CreateSessionResponse>("/api/esg/chat/start", {
+    body: JSON.stringify({ language }),
+    headers: { ...JSON_HEADERS, ...providerHeaders(provider) },
+    method: "POST",
+  });
 }
 
 export function sendMessage(
   sessionId: string,
   message: string,
+  provider: ProviderId,
+  history: Array<{ content: string; role: "assistant" | "user" }>,
 ): Promise<ChatResponse> {
-  return postJson<ChatResponse>("/api/esg/chat/message", {
-    message,
-    session_id: sessionId,
+  return requestJson<ChatResponse>("/api/esg/chat/message", {
+    body: JSON.stringify({
+      history,
+      message,
+      session_id: sessionId,
+    }),
+    headers: { ...JSON_HEADERS, ...providerHeaders(provider) },
+    method: "POST",
   });
 }
