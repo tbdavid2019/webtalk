@@ -43,7 +43,7 @@ function providerHeaders(provider: ProviderId): Record<string, string> {
 }
 
 export function fetchTopics(language: Language, provider: ProviderId): Promise<TopicsResponse> {
-  return requestJson<TopicsResponse>(`/api/esg/topics/${language}`, {
+  return requestJson<TopicsResponse>(`/api/topics-${language}`, {
     headers: providerHeaders(provider),
   });
 }
@@ -52,7 +52,7 @@ export function createSession(
   language: Language,
   provider: ProviderId,
 ): Promise<CreateSessionResponse> {
-  return requestJson<CreateSessionResponse>("/api/esg/chat/start", {
+  return requestJson<CreateSessionResponse>("/api/chat-start", {
     body: JSON.stringify({ language }),
     headers: { ...JSON_HEADERS, ...providerHeaders(provider) },
     method: "POST",
@@ -65,7 +65,7 @@ export function sendMessage(
   provider: ProviderId,
   history: Array<{ content: string; role: "assistant" | "user" }>,
 ): Promise<ChatResponse> {
-  return requestJson<ChatResponse>("/api/esg/chat/message", {
+  return requestJson<ChatResponse>("/api/chat-message", {
     body: JSON.stringify({
       history,
       message,

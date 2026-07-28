@@ -55,7 +55,7 @@ const questions = computed(() => {
 </script>
 
 <template>
-  <aside class="topic-rail" aria-label="ESG 快速問答">
+  <aside class="topic-rail" aria-label="快速問答">
 
     <p v-if="error" class="topic-rail__error" role="status">
       {{ error }}

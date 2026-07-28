@@ -17,7 +17,7 @@ const citedIndexes = computed(() => {
 });
 const speakerName = computed(() => {
   if (props.message.role === "assistant") {
-    return "AIKKA";
+    return "Mia";
   }
   return props.language === "zh" ? "你" : "You";
 });

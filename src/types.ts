@@ -1,8 +1,8 @@
 export type Language = "en" | "zh";
 
-export type CharacterId = "aikka" | "field-guide";
+export type CharacterId = "mia" | "field-guide";
 
-export type ProviderId = "esg-proxy" | "openai" | "groq" | "gemini" | "custom";
+export type ProviderId = "openai" | "groq" | "gemini" | "custom";
 
 export type StageState = "idle" | "thinking" | "talking";
 

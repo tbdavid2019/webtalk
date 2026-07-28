@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
 
-type ProviderMode = "esg-proxy" | "openai-compatible";
 type ProviderPreset = "custom" | "gemini" | "groq" | "openai";
-type CharacterId = "aikka" | "field-guide";
+type CharacterId = "mia" | "field-guide";
 
 const PROVIDERS: Record<Exclude<ProviderPreset, "custom">, { baseUrl: string; model: string }> = {
   gemini: {
@@ -21,11 +20,6 @@ const PROVIDERS: Record<Exclude<ProviderPreset, "custom">, { baseUrl: string; mo
 };
 
 interface LlmConfig {
-  mode: ProviderMode;
-  esg: {
-    hasApiToken: boolean;
-    origin: string;
-  };
   openai: {
     baseUrl: string;
     hasApiKey: boolean;
@@ -42,7 +36,6 @@ const emit = defineEmits<{
   close: [];
   saved: [settings: {
     character: CharacterId;
-    mode: ProviderMode;
     provider: ProviderPreset;
   }];
 }>();
@@ -56,9 +49,7 @@ const success = ref("");
 const apiKey = ref("");
 const form = reactive({
   baseUrl: "",
-  character: "aikka" as CharacterId,
-  esgOrigin: "",
-  mode: "openai-compatible" as ProviderMode,
+  character: "mia" as CharacterId,
   model: "",
   provider: "openai" as ProviderPreset,
   systemPrompt: "",
@@ -81,8 +72,6 @@ async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
 function applyConfig(config: LlmConfig): void {
   form.baseUrl = config.openai.baseUrl;
   form.character = config.ui.character;
-  form.esgOrigin = config.esg.origin;
-  form.mode = config.mode;
   form.model = config.openai.model;
   form.provider = config.openai.provider;
   form.systemPrompt = config.openai.systemPrompt;
@@ -90,13 +79,13 @@ function applyConfig(config: LlmConfig): void {
 }
 
 async function loadConfig(): Promise<void> {
-  const config = await requestJson<LlmConfig>("/api/admin/llm-config");
+  const config = await requestJson<LlmConfig>("/api/admin-config");
   applyConfig(config);
 }
 
 async function checkSession(): Promise<void> {
   try {
-    const session = await requestJson<{ signedIn: boolean }>("/api/admin/session");
+    const session = await requestJson<{ signedIn: boolean }>("/api/admin-session");
     signedIn.value = session.signedIn;
     if (session.signedIn) await loadConfig();
   } catch (caughtError) {
@@ -111,7 +100,7 @@ async function signIn(): Promise<void> {
   error.value = "";
   isSaving.value = true;
   try {
-    await requestJson("/api/admin/session", {
+    await requestJson("/api/admin-session", {
       body: JSON.stringify({ password: password.value }),
       method: "POST",
     });
@@ -137,10 +126,8 @@ async function save(): Promise<void> {
   success.value = "";
   isSaving.value = true;
   try {
-    const config = await requestJson<LlmConfig>("/api/admin/llm-config", {
+    const config = await requestJson<LlmConfig>("/api/admin-config", {
       body: JSON.stringify({
-        mode: form.mode,
-        esg: { origin: form.esgOrigin },
         openai: {
           apiKey: apiKey.value,
           baseUrl: form.baseUrl,
@@ -157,7 +144,6 @@ async function save(): Promise<void> {
     success.value = "已儲存；新的聊天會立即使用此設定。";
     emit("saved", {
       character: config.ui.character,
-      mode: config.mode,
       provider: config.openai.provider,
     });
   } catch (caughtError) {
@@ -168,7 +154,7 @@ async function save(): Promise<void> {
 }
 
 async function signOut(): Promise<void> {
-  await requestJson("/api/admin/session", { method: "DELETE" });
+  await requestJson("/api/admin-session", { method: "DELETE" });
   signedIn.value = false;
   success.value = "";
 }
@@ -205,9 +191,9 @@ onMounted(checkSession);
         <fieldset>
           <legend>預設人偶</legend>
           <label class="admin-character">
-            <input v-model="form.character" type="radio" value="aikka">
-            <img src="/nook-guide/avatars/aikka/aikka-avatar.png?v=3" alt="">
-            <span><strong>AIKKA 女角</strong><small>原本的動畫角色</small></span>
+            <input v-model="form.character" type="radio" value="mia">
+            <img src="/nook-guide/avatars/mia/mia-avatar.png?v=4" alt="">
+            <span><strong>Mia 女角</strong><small>動畫助理</small></span>
           </label>
           <label class="admin-character">
             <input v-model="form.character" type="radio" value="field-guide">
@@ -216,62 +202,34 @@ onMounted(checkSession);
           </label>
         </fieldset>
 
-        <fieldset>
-          <legend>聊天來源</legend>
-          <label class="admin-choice">
-            <input v-model="form.mode" type="radio" value="openai-compatible">
-            <span>
-              <strong>OpenAI-compatible</strong>
-              <small>直接呼叫 Base URL 的 <code>/chat/completions</code></small>
-            </span>
-          </label>
-          <label class="admin-choice">
-            <input v-model="form.mode" type="radio" value="esg-proxy">
-            <span>
-              <strong>原 ESG API</strong>
-              <small>沿用既有的 ESG session 與知識庫服務</small>
-            </span>
-          </label>
-        </fieldset>
-
-        <template v-if="form.mode === 'openai-compatible'">
-          <label>
-            LLM 供應商
-            <select v-model="form.provider" @change="selectProvider">
-              <option value="openai">OpenAI</option>
-              <option value="groq">Groq</option>
-              <option value="gemini">Google Gemini</option>
-              <option value="custom">自訂 OpenAI-compatible</option>
-            </select>
-            <small>選擇供應商會自動帶入 Base URL 與建議 Model，仍可自行修改。</small>
-          </label>
-          <label>
-            Base URL
-            <input v-model="form.baseUrl" inputmode="url" placeholder="https://api.openai.com/v1" required type="url">
-            <small>輸入到 <code>/v1</code> 即可；後台會補上 <code>/chat/completions</code>。</small>
-          </label>
-          <label>
-            API key
-            <input v-model="apiKey" autocomplete="off" placeholder="留空代表保留既有金鑰" type="password">
-            <small>{{ hasApiKey ? "Vercel 環境或伺服器已有金鑰；前端無法讀取。" : form.provider === "custom" ? "自訂服務可不填金鑰。" : "Vercel 尚未設定此供應商金鑰。" }}</small>
-          </label>
-          <label>
-            Model
-            <input v-model="form.model" placeholder="gpt-4.1-mini" required type="text">
-          </label>
-          <label>
-            System prompt
-            <textarea v-model="form.systemPrompt" rows="4"></textarea>
-          </label>
-        </template>
-
-        <template v-else>
-          <label>
-            ESG API Origin
-            <input v-model="form.esgOrigin" inputmode="url" placeholder="http://host.docker.internal:8913" type="url">
-            <small>Token 仍只保留在伺服器的啟動環境中。</small>
-          </label>
-        </template>
+        <label>
+          LLM 供應商
+          <select v-model="form.provider" @change="selectProvider">
+            <option value="openai">OpenAI</option>
+            <option value="groq">Groq</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="custom">自訂 OpenAI-compatible</option>
+          </select>
+          <small>選擇供應商會自動帶入 Base URL 與建議 Model，仍可自行修改。</small>
+        </label>
+        <label>
+          Base URL
+          <input v-model="form.baseUrl" inputmode="url" placeholder="https://api.openai.com/v1" required type="url">
+          <small>輸入到 <code>/v1</code> 即可；後台會補上 <code>/chat/completions</code>。</small>
+        </label>
+        <label>
+          API key
+          <input v-model="apiKey" autocomplete="off" placeholder="留空代表使用 Vercel 環境變數" type="password">
+          <small>{{ hasApiKey ? "Vercel 環境或伺服器已有金鑰；前端無法讀取。" : form.provider === "custom" ? "自訂服務可不填金鑰。" : "Vercel 尚未設定此供應商金鑰。" }}</small>
+        </label>
+        <label>
+          Model
+          <input v-model="form.model" placeholder="gpt-4.1-mini" required type="text">
+        </label>
+        <label>
+          System prompt
+          <textarea v-model="form.systemPrompt" rows="4"></textarea>
+        </label>
 
         <p v-if="error" class="admin-panel__error" role="alert">{{ error }}</p>
         <p v-if="success" class="admin-panel__success" role="status">{{ success }}</p>

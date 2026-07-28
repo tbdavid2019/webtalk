@@ -5,7 +5,7 @@ import ChatMessage from "./components/ChatMessage.vue";
 import AdminPanel from "./components/AdminPanel.vue";
 import StageCharacter from "./components/StageCharacter.vue";
 import TopicRail from "./components/TopicRail.vue";
-import { createSession, fetchTopics, sendMessage } from "./services/esgApi";
+import { createSession, fetchTopics, sendMessage } from "./services/chatApi";
 import type {
   ChatMessage as ChatMessageType,
   CharacterId,
@@ -33,10 +33,10 @@ interface InterfaceCopy {
 
 const COPY_BY_LANGUAGE: Record<Language, InterfaceCopy> = {
   en: {
-    chatLabel: "ESG conversation",
+    chatLabel: "AI conversation",
     composerHelp: "Enter to send · Shift + Enter for a new line",
     composerLabel: "Your question",
-    greeting: "Hi, I’m AIKKA. Choose a quick ESG question or ask me anything.",
+    greeting: "Hi, I’m Mia. Ask me anything.",
     placeholder: "For example: How should a company assess Scope 3 emissions?",
     reset: "Reset",
     searchError: "The chat API could not complete the request",
@@ -46,11 +46,11 @@ const COPY_BY_LANGUAGE: Record<Language, InterfaceCopy> = {
     topicError: "Topics are temporarily unavailable",
   },
   zh: {
-    chatLabel: "ESG 對話",
+    chatLabel: "AI 對話",
     composerHelp: "Enter 送出 · Shift + Enter 換行",
     composerLabel: "你的問題",
-    greeting: "嗨，我是 AIKKA。想了解什麼 ESG 資訊嗎？跟我說，我幫你找。",
-    placeholder: "想知道甚麼？跟AIKKA說",
+    greeting: "嗨，我是 Mia。想知道什麼？跟我說，我幫你找。",
+    placeholder: "想知道什麼？跟 Mia 說",
     reset: "重設",
     searchError: "聊天 API 無法完成請求",
     searching: "查找中",
@@ -65,7 +65,7 @@ const SUCCESS_STATE_DURATION_MS = 900;
 
 const categories = ref<TopicCategory[]>([]);
 const backgroundCredit = ref("");
-const characterId = ref<CharacterId>("aikka");
+const characterId = ref<CharacterId>("mia");
 const composer = ref("");
 const error = ref("");
 const isAdminOpen = ref(false);
@@ -73,14 +73,13 @@ const isLoadingTopics = ref(true);
 const language = ref<Language>("zh");
 const messages = ref<ChatMessageType[]>([]);
 const messageList = ref<HTMLElement>();
-const providerId = ref<ProviderId>("esg-proxy");
+const providerId = ref<ProviderId>("openai");
 const providerOptions = ref<Array<{
   configured: boolean;
   id: ProviderId;
   label: string;
   model: string;
 }>>([]);
-const githubUrl = import.meta.env.VITE_GITHUB_URL?.trim() ?? "";
 const sendState = ref<SendState>("default");
 const sessionId = ref("");
 const stageState = ref<StageState>("idle");
@@ -89,10 +88,10 @@ const topicError = ref("");
 const isWorking = computed(() => stageState.value !== "idle");
 const copy = computed(() => COPY_BY_LANGUAGE[language.value]);
 const characters: Record<CharacterId, { label: string; name: string; avatar: string }> = {
-  aikka: {
-    avatar: "/nook-guide/avatars/aikka/aikka-avatar.png?v=3",
-    label: "AIKKA",
-    name: "AIKKA",
+  mia: {
+    avatar: "/nook-guide/avatars/mia/mia-avatar.png?v=4",
+    label: "Mia",
+    name: "Mia",
   },
   "field-guide": {
     avatar: "/nook-guide/avatars/field-guide/vietnam-field-guide-8bit-idle.png?v=1",
@@ -126,7 +125,7 @@ const typingLabel = computed(() => {
     ? `${activeCharacter.value.name} 正在查找資料`
     : `${activeCharacter.value.name} is searching for information`;
 });
-const greeting = computed(() => copy.value.greeting.replace("AIKKA", activeCharacter.value.name));
+const greeting = computed(() => copy.value.greeting.replace("Mia", activeCharacter.value.name));
 
 function delay(duration: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, duration));
@@ -299,11 +298,11 @@ async function loadRuntimeConfig(): Promise<void> {
     )?.id ?? runtime.llm?.defaultProvider;
     if (selectedProvider) providerId.value = selectedProvider;
     const savedCharacter = window.localStorage.getItem("nook-character");
-    if (savedCharacter === "aikka" || savedCharacter === "field-guide") {
+    if (savedCharacter === "mia" || savedCharacter === "field-guide") {
       characterId.value = savedCharacter;
       return;
     }
-    if (runtime.ui?.character === "aikka" || runtime.ui?.character === "field-guide") {
+    if (runtime.ui?.character === "mia" || runtime.ui?.character === "field-guide") {
       characterId.value = runtime.ui.character;
     }
   } catch {
@@ -313,7 +312,7 @@ async function loadRuntimeConfig(): Promise<void> {
 
 async function loadBingBackground(): Promise<void> {
   try {
-    const response = await fetch("/api/background/bing");
+    const response = await fetch("/api/background");
     if (!response.ok) return;
     const background = await response.json() as { copyright?: string; url?: string };
     if (!background.url) return;
@@ -340,13 +339,10 @@ watch(composer, () => {
 
 async function applyAdminSettings(settings: {
   character: CharacterId;
-  mode: "esg-proxy" | "openai-compatible";
-  provider: Exclude<ProviderId, "esg-proxy">;
+  provider: ProviderId;
 }): Promise<void> {
   characterId.value = settings.character;
-  providerId.value = settings.mode === "esg-proxy"
-    ? "esg-proxy"
-    : settings.provider;
+  providerId.value = settings.provider;
   window.localStorage.setItem("nook-character", settings.character);
   window.localStorage.setItem("nook-provider", providerId.value);
   resetConversation();
@@ -386,7 +382,7 @@ async function changeProvider(): Promise<void> {
         <label class="quick-switch">
           <span class="visually-hidden">切換人偶</span>
           <select v-model="characterId" :disabled="isWorking" @change="changeCharacter">
-            <option value="aikka">AIKKA 女角</option>
+            <option value="mia">Mia 女角</option>
             <option value="field-guide">8-bit 男角</option>
           </select>
         </label>
@@ -431,32 +427,6 @@ async function changeProvider(): Promise<void> {
         >
           <span>{{ languageSwitchLabel }}</span>
         </button>
-        <a
-          class="build-credit"
-          aria-label="Built with CSL"
-          :aria-disabled="!githubUrl"
-          :href="githubUrl || undefined"
-          :rel="githubUrl ? 'noreferrer' : undefined"
-          :tabindex="githubUrl ? undefined : -1"
-          :target="githubUrl ? '_blank' : undefined"
-          :title="
-            githubUrl
-              ? 'Open CreateIntelligens on GitHub'
-              : 'GitHub URL is not configured'
-          "
-        >
-          <span class="build-credit__copy">
-            <strong>Built with</strong>
-            <small>CSL</small>
-          </span>
-          <img
-            class="build-credit__avatar"
-            src="/nook-guide/avatars/csl/csl-avatar.png?v=1"
-            alt=""
-            height="256"
-            width="256"
-          >
-        </a>
       </div>
     </header>
 

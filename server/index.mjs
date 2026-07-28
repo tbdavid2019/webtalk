@@ -10,7 +10,7 @@ const sessionCookieName = "nook_admin_session";
 const sessionLifetimeMs = 1000 * 60 * 60 * 8;
 const chatSessions = new Map();
 const OPENAI_PROVIDERS = new Set(["custom", "gemini", "groq", "openai"]);
-const CHARACTER_IDS = new Set(["aikka", "field-guide"]);
+const CHARACTER_IDS = new Set(["mia", "field-guide"]);
 const PROVIDER_PRESETS = {
   gemini: {
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
@@ -61,20 +61,15 @@ const DEFAULT_TOPICS = {
 
 function defaultConfig() {
   return {
-    mode: "esg-proxy",
-    esg: {
-      apiToken: process.env.ESG_API_TOKEN?.trim() ?? "",
-      origin: process.env.ESG_API_ORIGIN?.trim() ?? "",
-    },
     openai: {
       apiKey: "",
       baseUrl: "https://api.openai.com/v1",
       model: "gpt-4.1-mini",
       provider: "openai",
-      systemPrompt: "You are a helpful, concise assistant.",
+      systemPrompt: "You are Mia, a helpful, concise assistant.",
     },
     ui: {
-      character: "aikka",
+      character: "mia",
     },
   };
 }
@@ -94,7 +89,6 @@ function isHttpUrl(value) {
 
 function normaliseConfig(value) {
   const defaults = defaultConfig();
-  const mode = value?.mode === "openai-compatible" ? "openai-compatible" : "esg-proxy";
   const provider = OPENAI_PROVIDERS.has(value?.openai?.provider)
     ? value.openai.provider
     : defaults.openai.provider;
@@ -102,11 +96,6 @@ function normaliseConfig(value) {
     ? value.ui.character
     : defaults.ui.character;
   return {
-    mode,
-    esg: {
-      apiToken: text(value?.esg?.apiToken) || defaults.esg.apiToken,
-      origin: text(value?.esg?.origin) || defaults.esg.origin,
-    },
     openai: {
       apiKey: text(value?.openai?.apiKey),
       baseUrl: text(value?.openai?.baseUrl).replace(/\/+$/, ""),
@@ -149,11 +138,6 @@ async function saveConfig(nextConfig) {
 function publicConfig() {
   const activeProfile = providerConfig(config.openai.provider);
   return {
-    mode: config.mode,
-    esg: {
-      hasApiToken: Boolean(config.esg.apiToken),
-      origin: config.esg.origin,
-    },
     openai: {
       baseUrl: activeProfile.baseUrl,
       hasApiKey: Boolean(activeProfile.apiKey),
@@ -173,11 +157,15 @@ function environmentValue(name) {
 
 function providerConfig(provider) {
   if (provider === "custom") {
+    const useSavedProfile = config.openai.provider === "custom";
     return {
-      apiKey: environmentValue("CUSTOM_OPENAI_API_KEY") || config.openai.apiKey,
-      baseUrl: environmentValue("CUSTOM_OPENAI_BASE_URL") || config.openai.baseUrl,
+      apiKey: environmentValue("CUSTOM_OPENAI_API_KEY")
+        || (useSavedProfile ? config.openai.apiKey : ""),
+      baseUrl: environmentValue("CUSTOM_OPENAI_BASE_URL")
+        || (useSavedProfile ? config.openai.baseUrl : ""),
       label: "Custom",
-      model: environmentValue("CUSTOM_OPENAI_MODEL") || config.openai.model,
+      model: environmentValue("CUSTOM_OPENAI_MODEL")
+        || (useSavedProfile ? config.openai.model : "custom-model"),
       provider,
       systemPrompt: environmentValue("NOOK_SYSTEM_PROMPT") || config.openai.systemPrompt,
     };
@@ -199,13 +187,7 @@ function providerConfig(provider) {
 }
 
 function runtimeProviders() {
-  const esgConfigured = isHttpUrl(config.esg.origin);
-  const providers = [{
-    configured: esgConfigured,
-    id: "esg-proxy",
-    label: "ESG API",
-    model: "",
-  }];
+  const providers = [];
   for (const provider of ["openai", "groq", "gemini", "custom"]) {
     const profile = providerConfig(provider);
     providers.push({
@@ -336,12 +318,12 @@ async function requestOpenAi(messages, provider) {
 }
 
 async function handleOpenAiChat(request, response, pathname, provider) {
-  if (request.method === "GET" && pathname.startsWith("/api/esg/topics/")) {
+  if (request.method === "GET" && pathname.startsWith("/api/topics-")) {
     sendJson(response, 200, DEFAULT_TOPICS);
     return true;
   }
 
-  if (request.method === "POST" && pathname === "/api/esg/chat/start") {
+  if (request.method === "POST" && pathname === "/api/chat-start") {
     const body = await readJson(request);
     const sessionId = randomUUID();
     chatSessions.set(sessionId, {
@@ -355,7 +337,7 @@ async function handleOpenAiChat(request, response, pathname, provider) {
     return true;
   }
 
-  if (request.method === "POST" && pathname === "/api/esg/chat/message") {
+  if (request.method === "POST" && pathname === "/api/chat-message") {
     const body = await readJson(request);
     const session = chatSessions.get(text(body.session_id));
     const message = text(body.message);
@@ -387,34 +369,6 @@ async function handleOpenAiChat(request, response, pathname, provider) {
     return true;
   }
   return false;
-}
-
-async function proxyEsg(request, response) {
-  if (!isHttpUrl(config.esg.origin)) {
-    sendJson(response, 503, { detail: "ESG API origin is not configured." });
-    return;
-  }
-  const bodyChunks = [];
-  for await (const chunk of request) bodyChunks.push(chunk);
-  const headers = new Headers();
-  if (request.headers["content-type"]) headers.set("content-type", request.headers["content-type"]);
-  if (config.esg.apiToken) headers.set("API-Token", config.esg.apiToken);
-
-  try {
-    const upstream = await fetch(new URL(request.url, config.esg.origin), {
-      body: ["GET", "HEAD"].includes(request.method ?? "GET") ? undefined : Buffer.concat(bodyChunks),
-      headers,
-      method: request.method,
-      signal: AbortSignal.timeout(180_000),
-    });
-    const responseBody = Buffer.from(await upstream.arrayBuffer());
-    response.writeHead(upstream.status, {
-      "Content-Type": upstream.headers.get("content-type") ?? "application/json; charset=utf-8",
-    });
-    response.end(responseBody);
-  } catch (error) {
-    sendJson(response, 502, { detail: error instanceof Error ? error.message : "The ESG API request failed." });
-  }
 }
 
 async function handleBingBackground(response) {
@@ -452,7 +406,7 @@ async function handleBingBackground(response) {
 }
 
 async function handleAdmin(request, response, pathname) {
-  if (pathname === "/api/admin/session") {
+  if (pathname === "/api/admin-session") {
     if (request.method === "GET") {
       sendJson(response, 200, { signedIn: Boolean(adminSession(request)) });
       return true;
@@ -485,7 +439,7 @@ async function handleAdmin(request, response, pathname) {
     }
   }
 
-  if (pathname === "/api/admin/llm-config") {
+  if (pathname === "/api/admin-config") {
     if (!requireAdmin(request, response)) return true;
     if (request.method === "GET") {
       sendJson(response, 200, publicConfig());
@@ -495,8 +449,6 @@ async function handleAdmin(request, response, pathname) {
       const body = await readJson(request);
       const nextConfig = normaliseConfig({
         ...config,
-        mode: body.mode,
-        esg: { ...config.esg, origin: body.esg?.origin },
         openai: {
           ...config.openai,
           baseUrl: body.openai?.baseUrl,
@@ -514,7 +466,7 @@ async function handleAdmin(request, response, pathname) {
         nextConfig.openai.apiKey = text(body.openai.apiKey)
           || (providerChanged ? "" : config.openai.apiKey);
       }
-      if (nextConfig.mode === "openai-compatible" && !isHttpUrl(nextConfig.openai.baseUrl)) {
+      if (!isHttpUrl(nextConfig.openai.baseUrl)) {
         sendJson(response, 400, { detail: "Enter a valid OpenAI-compatible Base URL." });
         return true;
       }
@@ -532,16 +484,13 @@ export async function handleRequest(request, response) {
     if (await handleAdmin(request, response, url.pathname)) return;
     if (request.method === "GET" && url.pathname === "/api/runtime-config") {
       const providers = runtimeProviders();
-      const preferredProvider = config.mode === "esg-proxy"
-        ? "esg-proxy"
-        : config.openai.provider;
+      const preferredProvider = config.openai.provider;
       const defaultProvider = providers.find(
         (provider) => provider.id === preferredProvider && provider.configured,
       )?.id ?? providers.find((provider) => provider.configured)?.id ?? preferredProvider;
       sendJson(response, 200, {
         llm: {
           defaultProvider,
-          mode: config.mode,
           model: config.openai.model,
           provider: config.openai.provider,
           providers,
@@ -552,7 +501,7 @@ export async function handleRequest(request, response) {
       });
       return;
     }
-    if (request.method === "GET" && url.pathname === "/api/background/bing") {
+    if (request.method === "GET" && url.pathname === "/api/background") {
       await handleBingBackground(response);
       return;
     }
@@ -560,22 +509,18 @@ export async function handleRequest(request, response) {
       sendJson(response, 200, { ok: true });
       return;
     }
-    if (!url.pathname.startsWith("/api/esg/")) {
+    if (!url.pathname.startsWith("/api/topics-")
+      && url.pathname !== "/api/chat-start"
+      && url.pathname !== "/api/chat-message") {
       sendJson(response, 404, { detail: "Not found" });
       return;
     }
     const requestedProvider = text(request.headers["x-nook-provider"]);
     const provider = OPENAI_PROVIDERS.has(requestedProvider)
       ? requestedProvider
-      : config.mode === "openai-compatible"
-        ? config.openai.provider
-        : "esg-proxy";
-    if (provider !== "esg-proxy") {
-      if (await handleOpenAiChat(request, response, url.pathname, provider)) return;
-      sendJson(response, 404, { detail: "OpenAI-compatible mode does not implement this API route." });
-      return;
-    }
-    await proxyEsg(request, response);
+      : config.openai.provider;
+    if (await handleOpenAiChat(request, response, url.pathname, provider)) return;
+    sendJson(response, 404, { detail: "Chat route not found." });
   } catch (error) {
     const status = error instanceof Error && error.message === "Request body is too large" ? 413 : 400;
     sendJson(response, status, { detail: error instanceof Error ? error.message : "Bad request" });

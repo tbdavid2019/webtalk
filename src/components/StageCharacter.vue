@@ -10,17 +10,17 @@ const props = defineProps<{
 }>();
 
 const characterImages: Record<CharacterId, Record<StageState, string[]>> = {
-  aikka: {
-    idle: ["/nook-guide/avatars/aikka/aikka-idle.png?v=3"],
+  mia: {
+    idle: ["/nook-guide/avatars/mia/mia-idle.png?v=4"],
     talking: [
-      "/nook-guide/avatars/aikka/aikka-talking-1.png?v=3",
-      "/nook-guide/avatars/aikka/aikka-talking-2.png?v=3",
-      "/nook-guide/avatars/aikka/aikka-idle.png?v=3",
+      "/nook-guide/avatars/mia/mia-talking-1.png?v=4",
+      "/nook-guide/avatars/mia/mia-talking-2.png?v=4",
+      "/nook-guide/avatars/mia/mia-idle.png?v=4",
     ],
     thinking: [
-      "/nook-guide/avatars/aikka/aikka-thinking-1.png?v=3",
-      "/nook-guide/avatars/aikka/aikka-thinking-2.png?v=3",
-      "/nook-guide/avatars/aikka/aikka-thinking-3.png?v=3",
+      "/nook-guide/avatars/mia/mia-thinking-1.png?v=4",
+      "/nook-guide/avatars/mia/mia-thinking-2.png?v=4",
+      "/nook-guide/avatars/mia/mia-thinking-3.png?v=4",
     ],
   },
   "field-guide": {
@@ -30,9 +30,9 @@ const characterImages: Record<CharacterId, Record<StageState, string[]>> = {
   },
 };
 const ALT_TEXT: Record<CharacterId, Record<Language, string>> = {
-  aikka: {
-    en: "AIKKA virtual guide is helping with the answer",
-    zh: "AIKKA 虛擬顧問正在協助回答",
+  mia: {
+    en: "Mia is helping with the answer",
+    zh: "Mia 正在協助回答",
   },
   "field-guide": {
     en: "The 8-bit field guide is helping with the answer",
@@ -61,7 +61,7 @@ function preloadImage(source: string): void {
 
 preloadImages.forEach(preloadImage);
 
-const currentSource = ref(characterImages.aikka.idle[0]);
+const currentSource = ref(characterImages.mia.idle[0]);
 let actionTimer: ReturnType<typeof setTimeout> | undefined;
 
 const altText = computed(() => ALT_TEXT[props.character][props.language]);
