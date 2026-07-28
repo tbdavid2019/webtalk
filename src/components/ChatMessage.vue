@@ -4,6 +4,7 @@ import { computed } from "vue";
 import type { ChatMessage, Citation, Language } from "../types";
 
 const props = defineProps<{
+  assistantName: string;
   language: Language;
   message: ChatMessage;
 }>();
@@ -17,7 +18,7 @@ const citedIndexes = computed(() => {
 });
 const speakerName = computed(() => {
   if (props.message.role === "assistant") {
-    return "Mia";
+    return props.assistantName;
   }
   return props.language === "zh" ? "你" : "You";
 });

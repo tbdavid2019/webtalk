@@ -23,10 +23,10 @@ const characterImages: Record<CharacterId, Record<StageState, string[]>> = {
       "/nook-guide/avatars/mia/mia-thinking-3.png?v=4",
     ],
   },
-  "field-guide": {
-    idle: ["/nook-guide/avatars/field-guide/vietnam-field-guide-8bit-idle.png?v=1"],
-    talking: ["/nook-guide/avatars/field-guide/vietnam-field-guide-8bit-idle.png?v=1"],
-    thinking: ["/nook-guide/avatars/field-guide/vietnam-field-guide-8bit-idle.png?v=1"],
+  norman: {
+    idle: ["/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=2"],
+    talking: ["/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=2"],
+    thinking: ["/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=2"],
   },
 };
 const ALT_TEXT: Record<CharacterId, Record<Language, string>> = {
@@ -34,9 +34,9 @@ const ALT_TEXT: Record<CharacterId, Record<Language, string>> = {
     en: "Mia is helping with the answer",
     zh: "Mia 正在協助回答",
   },
-  "field-guide": {
-    en: "The 8-bit field guide is helping with the answer",
-    zh: "8-bit 野戰導覽員正在協助回答",
+  norman: {
+    en: "Norman, the jungle guide, is helping with the answer",
+    zh: "Norman 叢林解說人正在協助回答",
   },
 };
 const STATUS_TEXT: Record<Language, Record<StageState, string>> = {

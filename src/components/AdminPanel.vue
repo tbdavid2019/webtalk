@@ -2,7 +2,7 @@
 import { onMounted, reactive, ref } from "vue";
 
 type ProviderPreset = "custom" | "gemini" | "groq" | "openai";
-type CharacterId = "mia" | "field-guide";
+type CharacterId = "mia" | "norman";
 
 const PROVIDERS: Record<Exclude<ProviderPreset, "custom">, { baseUrl: string; model: string }> = {
   gemini: {
@@ -196,9 +196,9 @@ onMounted(checkSession);
             <span><strong>Mia 女角</strong><small>動畫助理</small></span>
           </label>
           <label class="admin-character">
-            <input v-model="form.character" type="radio" value="field-guide">
-            <img src="/nook-guide/avatars/field-guide/vietnam-field-guide-8bit-idle.png?v=1" alt="">
-            <span><strong>8-bit 男角</strong><small>Q 版復古電玩風格</small></span>
+            <input v-model="form.character" type="radio" value="norman">
+            <img src="/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=2" alt="">
+            <span><strong>Norman 叢林解說人</strong><small>Q 版 8-bit 電玩風格</small></span>
           </label>
         </fieldset>
 

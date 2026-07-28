@@ -1,6 +1,6 @@
 export type Language = "en" | "zh";
 
-export type CharacterId = "mia" | "field-guide";
+export type CharacterId = "mia" | "norman";
 
 export type ProviderId = "openai" | "groq" | "gemini" | "custom";
 

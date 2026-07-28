@@ -93,10 +93,10 @@ const characters: Record<CharacterId, { label: string; name: string; avatar: str
     label: "Mia",
     name: "Mia",
   },
-  "field-guide": {
-    avatar: "/nook-guide/avatars/field-guide/vietnam-field-guide-8bit-idle.png?v=1",
-    label: "8-bit 導覽員",
-    name: "8-bit 導覽員",
+  norman: {
+    avatar: "/nook-guide/avatars/norman/norman-jungle-guide-8bit.png?v=2",
+    label: "Norman 叢林解說人",
+    name: "Norman 叢林解說人",
   },
 };
 const activeCharacter = computed(() => characters[characterId.value]);
@@ -298,11 +298,11 @@ async function loadRuntimeConfig(): Promise<void> {
     )?.id ?? runtime.llm?.defaultProvider;
     if (selectedProvider) providerId.value = selectedProvider;
     const savedCharacter = window.localStorage.getItem("nook-character");
-    if (savedCharacter === "mia" || savedCharacter === "field-guide") {
+    if (savedCharacter === "mia" || savedCharacter === "norman") {
       characterId.value = savedCharacter;
       return;
     }
-    if (runtime.ui?.character === "mia" || runtime.ui?.character === "field-guide") {
+    if (runtime.ui?.character === "mia" || runtime.ui?.character === "norman") {
       characterId.value = runtime.ui.character;
     }
   } catch {
@@ -383,7 +383,7 @@ async function changeProvider(): Promise<void> {
           <span class="visually-hidden">切換人偶</span>
           <select v-model="characterId" :disabled="isWorking" @change="changeCharacter">
             <option value="mia">Mia 女角</option>
-            <option value="field-guide">8-bit 男角</option>
+            <option value="norman">Norman 叢林解說人</option>
           </select>
         </label>
         <label class="quick-switch">
@@ -451,6 +451,7 @@ async function changeProvider(): Promise<void> {
           <ChatMessage
             v-for="message in messages"
             :key="message.id"
+            :assistant-name="activeCharacter.name"
             :language="language"
             :message="message"
           />

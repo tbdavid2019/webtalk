@@ -10,7 +10,7 @@ const sessionCookieName = "nook_admin_session";
 const sessionLifetimeMs = 1000 * 60 * 60 * 8;
 const chatSessions = new Map();
 const OPENAI_PROVIDERS = new Set(["custom", "gemini", "groq", "openai"]);
-const CHARACTER_IDS = new Set(["mia", "field-guide"]);
+const CHARACTER_IDS = new Set(["mia", "norman"]);
 const PROVIDER_PRESETS = {
   gemini: {
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
