@@ -16,15 +16,38 @@ const CHARACTER_PROMPTS = {
   norman: "You are Norman, a knowledgeable, friendly jungle guide and assistant.",
 };
 
-function getSystemPrompt(provider, character) {
-  const envPrompt = environmentValue("NOOK_SYSTEM_PROMPT");
-  if (envPrompt) return envPrompt;
-  const activeChar = CHARACTER_IDS.has(character) ? character : (config?.ui?.character ?? "mia");
-  const configuredPrompt = config?.openai?.systemPrompt;
-  if (!configuredPrompt || configuredPrompt === "You are Mia, a helpful, concise assistant.") {
-    return CHARACTER_PROMPTS[activeChar] ?? CHARACTER_PROMPTS.mia;
+function getDefaultProvider() {
+  const envDefault = environmentValue("NOOK_DEFAULT_PROVIDER") || environmentValue("DEFAULT_PROVIDER");
+  if (envDefault && OPENAI_PROVIDERS.has(envDefault)) {
+    return envDefault;
   }
-  return configuredPrompt;
+  if (environmentValue("GROQ_API_KEY") && !environmentValue("OPENAI_API_KEY")) return "groq";
+  if (environmentValue("GEMINI_API_KEY") && !environmentValue("OPENAI_API_KEY") && !environmentValue("GROQ_API_KEY")) return "gemini";
+  if (environmentValue("CUSTOM_OPENAI_BASE_URL") && !environmentValue("OPENAI_API_KEY")) return "custom";
+  return "openai";
+}
+
+function getSystemPrompt(provider, character) {
+  const activeChar = CHARACTER_IDS.has(character) ? character : (config?.ui?.character ?? "mia");
+  
+  if (activeChar === "norman" && environmentValue("NOOK_SYSTEM_PROMPT_NORMAN")) {
+    return environmentValue("NOOK_SYSTEM_PROMPT_NORMAN");
+  }
+  if (activeChar === "mia" && environmentValue("NOOK_SYSTEM_PROMPT_MIA")) {
+    return environmentValue("NOOK_SYSTEM_PROMPT_MIA");
+  }
+
+  const envPrompt = environmentValue("NOOK_SYSTEM_PROMPT");
+  if (envPrompt && envPrompt !== "You are Mia, a helpful, concise assistant.") {
+    return envPrompt;
+  }
+
+  const configuredPrompt = config?.openai?.systemPrompt;
+  if (configuredPrompt && configuredPrompt !== "You are Mia, a helpful, concise assistant.") {
+    return configuredPrompt;
+  }
+
+  return CHARACTER_PROMPTS[activeChar] ?? CHARACTER_PROMPTS.mia;
 }
 
 const PROVIDER_PRESETS = {
@@ -76,13 +99,15 @@ const DEFAULT_TOPICS = {
 };
 
 function defaultConfig() {
+  const provider = getDefaultProvider();
+  const preset = PROVIDER_PRESETS[provider] ?? PROVIDER_PRESETS.openai;
   return {
     openai: {
       apiKey: "",
-      baseUrl: "https://api.openai.com/v1",
-      model: "gpt-4.1-mini",
-      provider: "openai",
-      systemPrompt: "You are Mia, a helpful, concise assistant.",
+      baseUrl: preset.baseUrl,
+      model: preset.model,
+      provider,
+      systemPrompt: CHARACTER_PROMPTS.mia,
     },
     ui: {
       character: "mia",
@@ -108,9 +133,10 @@ function normaliseConfig(value) {
   const character = CHARACTER_IDS.has(value?.ui?.character)
     ? value.ui.character
     : defaults.ui.character;
-  const provider = OPENAI_PROVIDERS.has(value?.openai?.provider)
-    ? value.openai.provider
-    : defaults.openai.provider;
+  const envDefaultProvider = environmentValue("NOOK_DEFAULT_PROVIDER") || environmentValue("DEFAULT_PROVIDER");
+  const provider = envDefaultProvider && OPENAI_PROVIDERS.has(envDefaultProvider)
+    ? envDefaultProvider
+    : (OPENAI_PROVIDERS.has(value?.openai?.provider) ? value.openai.provider : defaults.openai.provider);
   return {
     openai: {
       apiKey: text(value?.openai?.apiKey),

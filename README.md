@@ -126,6 +126,7 @@ docker compose up -d
    | 變數名稱 (Key) | 是否必填 | 說明 / 預設值 | 範例 / 建議設定 |
    | --- | --- | --- | --- |
    | `NOOK_ADMIN_PASSWORD` | **必填** | 登入前端 Admin 面板所需的管理密碼 | `your-secure-admin-password` |
+   | `NOOK_DEFAULT_PROVIDER` | 選填 | 預設 LLM 供應商 (未設定時自動偵測已設定 Key 者) | `groq`, `gemini`, `openai`, `custom` |
    | `OPENAI_API_KEY` | 選填 | OpenAI API 金鑰 | `sk-proj-...` |
    | `OPENAI_MODEL` | 選填 | OpenAI 預設模型 (預設 `gpt-4.1-mini`) | `gpt-4.1-mini` 或 `gpt-4o` |
    | `OPENAI_BASE_URL` | 選填 | OpenAI API Base URL | `https://api.openai.com/v1` |
@@ -138,9 +139,11 @@ docker compose up -d
    | `CUSTOM_OPENAI_API_KEY` | 選填 | 自訂 OpenAI 相容服務 API Key | `your-custom-key` |
    | `CUSTOM_OPENAI_BASE_URL` | 選填 | 自訂 OpenAI 相容服務 Base URL | `https://your-custom-llm.com/v1` |
    | `CUSTOM_OPENAI_MODEL` | 選填 | 自訂 OpenAI 相容服務模型名稱 | `custom-model-name` |
-   | `NOOK_SYSTEM_PROMPT` | 選填 | 預設 AI 助手 Prompt / 角色設定 | `You are Mia, a helpful, concise assistant.` |
+   | `NOOK_SYSTEM_PROMPT_MIA` | 選填 | Mia (女角) 專屬系統提示詞 | `You are Mia, a helpful, concise assistant.` |
+   | `NOOK_SYSTEM_PROMPT_NORMAN` | 選填 | Norman (男角) 專屬系統提示詞 | `You are Norman, a knowledgeable jungle guide.` |
+   | `NOOK_SYSTEM_PROMPT` | 選填 | 所有角色的全域覆蓋 Prompt | `You are a helpful assistant.` |
 
-   > 💡 **提示**：`OPENAI_API_KEY`、`GEMINI_API_KEY`、`GROQ_API_KEY` 及 `CUSTOM_*` 建議至少設定一種 AI 供應商的金鑰，部署後才能正常呼叫模型對話。
+   > 💡 **提示**：`OPENAI_API_KEY`、`GEMINI_API_KEY`、`GROQ_API_KEY` 及 `CUSTOM_*` 建議至少設定一種 AI 供應商的金鑰。若僅填寫 `GROQ_API_KEY`，系統會自動將預設模型設為 `groq`，亦可透過 `NOOK_DEFAULT_PROVIDER=groq` 強制指定！
 
 5. **自動觸發部署機制**：
    - 只要設定好 GitHub / Git Remote 連接後：

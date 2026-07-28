@@ -14,7 +14,19 @@
 ### Known limitations
 
 - Vercel 上的後台「儲存設定」目前只更新當下 Serverless 實例的記憶體，實例重啟或擴縮後可能還原。
-- 前台選擇的人偶與 LLM Provider 儲存在各自瀏覽器的 Local Storage，不會自動同步給其他訪客。
+## [0.4.0] - 2026-07-28
+
+### Added
+
+- 新增 `NOOK_DEFAULT_PROVIDER` 環境變數支援，可自訂全域預設 LLM 供應商 (如 `groq`, `gemini`, `openai`, `custom`)。
+- 新增預設 LLM 自動檢測機制：若未設定預設 Provider 且缺乏 OpenAI Key，系統自動偵測並選用已設定 Key 的 Provider（例如僅有 `GROQ_API_KEY` 時自動將新訪客的預設模型設為 Groq）。
+- 新增 `NOOK_SYSTEM_PROMPT_MIA` 與 `NOOK_SYSTEM_PROMPT_NORMAN` 角色專屬系統提示詞環境變數。
+- 新增 AGPL-3.0 開源授權條款 (`LICENSE`)。
+
+### Fixed
+
+- 修正原本硬編碼 `NOOK_SYSTEM_PROMPT` 為 Mia 提示詞導致男角 Norman 切換時 Prompt 不符的問題。
+- 修正切換角色時未將 `character` 帶給後端導致模型生成身份混淆的問題。
 
 ## [0.3.0] - 2026-07-28
 
