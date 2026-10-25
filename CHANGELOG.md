@@ -14,6 +14,18 @@
 ### Known limitations
 
 - Vercel 上的後台「儲存設定」目前只更新當下 Serverless 實例的記憶體，實例重啟或擴縮後可能還原。
+## [0.4.1] - 2026-10-25
+
+### 🛡️ Security & Runtime Upgrade (Node.js 26.12.1 Security Hardening)
+- **容器基底升級 Node.js 26 (`node:26.12.1-alpine`)**:
+  - `Dockerfile` 多階段構建（builder 與 runner）基底映像全面升級為 `node:26.12.1-alpine`。
+  - 全面啟用最新 V8 引擎，具備原生 Type Stripping、低記憶體佔用與更高效的垃圾回收（GC）。
+  - 完整防禦 2026-10-21 官方緊急安全性公告（October 2026 Security Releases）：
+    - `CVE-2026-111497` (High - Node2Shell)：封堵 Brotli 解碼器越界寫入 RCE 漏洞。
+    - `CVE-2026-105482` (High)：封堵 dns.resolve 空字元截斷漏洞。
+    - `CVE-2026-105483` / `CVE-2026-106069` (High)：封堵 TLS 憑證主機名檢查繞過漏洞。
+    - 底層搭載 OpenSSL 3.5.9 與最新 CA 根憑證。
+
 ## [0.4.0] - 2026-07-28
 
 ### Added
